@@ -4,13 +4,17 @@ function reply(data) {
   let replyToken = data.events[0].replyToken;
   let lineUserId = data.events[0].source.userId;
   let typedata = data.events[0].type;
-  const ages = ["young", "middle", "high", "aged"]
-  const numbers = ["solo", "duet", "trio", "quintet"]
+  let ages = ["young", "middle", "high", "aged"]
+  let numbers = ["solo", "duet", "trio", "quintet"]
+  let colors = ["red", "blue", "yellow", "green"]
 
+  let sheet_detail = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME_DETAIL);
   var sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME_LOG);
   sheet.appendRow([data.events[0]]);
   var sheet_data = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME_MAYBE);
   let useridname = data.events[0].source.userId;
+  var sheet_userdata = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME_USER_ID);
+  sheet_userdata.appendRow([data.events[0].source.userId]);
   let timestampda = data.events[0].timestamp;
 
   if (typedata == "message") {
@@ -18,12 +22,13 @@ function reply(data) {
   } else if (typedata == "postback") {
     let postbackdata = data.events[0].postback.data;
     if (ages.includes(postbackdata)) {
-      sheet_data.appendRow([timestampda, useridname, "ages", postbackdata]);
+      agesnum = sheet_data.appendRow([timestampda, useridname, "ages", ages.indexOf(postbackdata) + 1]);
+
     } else if (numbers.includes(postbackdata)) {
-      sheet_data.appendRow([timestampda, useridname, "number", postbackdata]);
+      numbersnum = sheet_data.appendRow([timestampda, useridname, "numbers", numbers.indexOf(postbackdata) + 1])
     }
     else {
-      sheet_data.appendRow([timestampda, useridname, "color", postbackdata]);
+      colorsnum = sheet_data.appendRow([timestampda, useridname, "colors", colors.indexOf(postbackdata) + 1])
     }
   }
 
@@ -31,18 +36,30 @@ function reply(data) {
 
   let nextMode = "default"
   if (typedata == "message") {
-    //var postMsg = data.events[0].text;
-    // var action = data.events[0].message.action;
     nextMode = "age"
   } else if (typedata == "postback") {
     let postbackdata = data.events[0].postback.data;
     if (ages.includes(postbackdata)) {
       nextMode = "number"
-    } else {
+    } else if (numbers.includes(postbackdata)) {
       nextMode = "color"
+    } else if (colors.includes(postbackdata)) {
+      nextMode = "ans"
     }
   }
 
+  // if (nextMode == "ans") {
+  //   myFunction() //cos類似度
+
+  //   for (let i = 2; i < place.length; i++) {
+  //     if (spot[max1_i][1] == sheet_detail.getRange(`A${i}`).getValues()) {
+  //       place = sheet_detail.getRange(`B${i}`).getValue()
+  //       detail = sheet_detail.getRange(`C${i}`).getValue()
+  //       imageurl = sheet_detail.getRange(`D${i}`).getValue()
+  //       detaillink = sheet_detail.getRange(`E${i}`).getValue()
+  //     }
+  //   }
+  // }
 
 
   // メッセージAPI送信
@@ -51,6 +68,8 @@ function reply(data) {
 
 // LINE messaging apiにJSON形式でデータをPOST
 function sendMessage(replyToken, nextMode) {
+
+  //function kankochijson()
 
   let ageQuestion = [
     {
@@ -342,9 +361,91 @@ function sendMessage(replyToken, nextMode) {
     }
   ]
 
+  let ans = [
+    {
+      "type": "flex",
+      "altText": place,
+      "contents": {
+
+        "type": "bubble",
+        "hero": {
+          "type": "image",
+          "url": imageurl,
+          "size": "full",
+          "aspectRatio": "20:13",
+          "aspectMode": "cover",
+          "action": {
+            "type": "uri",
+            "uri": "http://linecorp.com/"
+          }
+        },
+        "body": {
+          "type": "box",
+          "layout": "vertical",
+          "contents": [
+            {
+              "type": "text",
+              "text": place,
+              "weight": "bold",
+              "size": "xl"
+            },
+            {
+              "type": "box",
+              "layout": "vertical",
+              "margin": "lg",
+              "spacing": "sm",
+              "contents": []
+            },
+            {
+              "type": "text",
+              "text": detail
+            }
+          ]
+        },
+        "footer": {
+          "type": "box",
+          "layout": "vertical",
+          "spacing": "sm",
+          "contents": [
+            {
+              "type": "button",
+              "style": "link",
+              "height": "sm",
+              "action": {
+                "type": "uri",
+                "label": "詳細",
+                "uri": dataillink
+              }
+            },
+            {
+              "type": "box",
+              "layout": "vertical",
+              "contents": [],
+              "margin": "sm"
+            }
+          ],
+          "flex": 0,
+          "action": {
+            "type": "uri",
+            "label": "action",
+            "uri": "http://linecorp.com/"
+          }
+        }
+
+      }
+
+
+
+    }
+  ]
+
+
+
+
   // replyするメッセージの定義
   let postData = {}
 
+  //Postdata を送ってます．
   if (nextMode == "age") {
     postData = {
       "replyToken": replyToken,
@@ -360,9 +461,14 @@ function sendMessage(replyToken, nextMode) {
       "replyToken": replyToken,
       "messages": colorQuestion
     };
-  } else{
-    //関数を呼び出す
+  } else if (nextMode == "ans") {
+    postData = {
+      "replyToken": replyToken,
+      "messages": ans
+    };
   }
+
+ 
 
   // リクエストヘッダ
   var headers = {
