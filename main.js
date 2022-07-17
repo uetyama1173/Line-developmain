@@ -1,16 +1,27 @@
+
+
+
 function reply(data) {
+  let agesnum
+  let numbersnum
+  let colorsnum
+
 
   // POST情報から必要データを抽出;
   let replyToken = data.events[0].replyToken;
   let lineUserId = data.events[0].source.userId;
   let typedata = data.events[0].type;
-  const ages = ["young", "middle", "high", "aged"]
-  const numbers = ["solo", "duet", "trio", "quintet"]
+  let ages = ["young", "middle", "high", "aged"]
+  let numbers = ["solo", "duet", "trio", "quintet"]
+  let colors = ["red", "blue", "yellow", "green"]
 
+  let sheet_detail = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME_DETAIL);
   var sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME_LOG);
   sheet.appendRow([data.events[0]]);
   var sheet_data = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME_MAYBE);
   let useridname = data.events[0].source.userId;
+  var sheet_userdata = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME_USER_ID);
+  sheet_userdata.appendRow([data.events[0].source.userId]);
   let timestampda = data.events[0].timestamp;
 
   if (typedata == "message") {
@@ -18,39 +29,62 @@ function reply(data) {
   } else if (typedata == "postback") {
     let postbackdata = data.events[0].postback.data;
     if (ages.includes(postbackdata)) {
-      sheet_data.appendRow([timestampda, useridname, "ages", postbackdata]);
+      sheet_data.appendRow([timestampda, useridname, "ages", ages.indexOf(postbackdata) + 1]);
+
     } else if (numbers.includes(postbackdata)) {
-      sheet_data.appendRow([timestampda, useridname, "number", postbackdata]);
+      sheet_data.appendRow([timestampda, useridname, "numbers", numbers.indexOf(postbackdata) + 1])
     }
     else {
-      sheet_data.appendRow([timestampda, useridname, "color", postbackdata]);
+      sheet_data.appendRow([timestampda, useridname, "colors", colors.indexOf(postbackdata) + 1])
     }
   }
 
-
+  let land
+  let detail
+  let imageurl
+  let detaillink
+  let placekanko
 
   let nextMode = "default"
   if (typedata == "message") {
-    //var postMsg = data.events[0].text;
-    // var action = data.events[0].message.action;
     nextMode = "age"
   } else if (typedata == "postback") {
     let postbackdata = data.events[0].postback.data;
     if (ages.includes(postbackdata)) {
       nextMode = "number"
-    } else {
+    } else if (numbers.includes(postbackdata)) {
       nextMode = "color"
+    } else if (colors.includes(postbackdata)) {
+
+      //最終行を取得
+      lastdata = sheet_data.getLastRow();
+      lastdataUser = sheet_data.getRange(lastdata, 2).getValue();
+
+      agesnum = sheet_data.getRange(lastdata - 2, 4).getValue();
+      numbersnum = sheet_data.getRange(lastdata - 1, 4).getValue();
+      colorsnum = sheet_data.getRange(lastdata, 4).getValue();
+
+      placekanko = myFunction(agesnum, numbersnum, colorsnum) //cos類似度
+      land = placekanko[0]
+      detail = placekanko[1]
+      imageurl = placekanko[2]
+      detaillink = placekanko[3]
+
+      nextMode = "ans"
     }
   }
 
 
-
   // メッセージAPI送信
-  sendMessage(replyToken, nextMode,);
+  sendMessage(replyToken, nextMode, land, detail, imageurl, detaillink);
+  //,land,detail,imageurl,detaillink
+
 }
 
+//let waoo =  [land,detail,imageurl,detaillink]
 // LINE messaging apiにJSON形式でデータをPOST
-function sendMessage(replyToken, nextMode) {
+function sendMessage(replyToken, nextMode, land, detail, imageurl, detaillink) {
+
 
   let ageQuestion = [
     {
@@ -342,9 +376,16 @@ function sendMessage(replyToken, nextMode) {
     }
   ]
 
+
+
+
+
+
+
   // replyするメッセージの定義
   let postData = {}
 
+  //Postdata を送ってます．
   if (nextMode == "age") {
     postData = {
       "replyToken": replyToken,
@@ -360,9 +401,92 @@ function sendMessage(replyToken, nextMode) {
       "replyToken": replyToken,
       "messages": colorQuestion
     };
-  } else{
-    //関数を呼び出す
+  } else if (nextMode == "ans") {
+
+    let kankochi = [
+      {
+        "type": "flex",
+        "altText": "altText",
+        "contents": {
+
+          "type": "bubble",
+          "hero": {
+            "type": "image",
+            "url": imageurl,
+            "size": "full",
+            "aspectRatio": "20:13",
+            "aspectMode": "cover",
+            "action": {
+              "type": "uri",
+              "uri": "http://linecorp.com/"
+            }
+          },
+          "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "type": "text",
+                "text": land,
+                "weight": "bold",
+                "size": "xl"
+              },
+              {
+                "type": "box",
+                "layout": "vertical",
+                "margin": "lg",
+                "spacing": "sm",
+                "contents": []
+              },
+              {
+                "type": "text",
+                "text": detail
+              }
+            ]
+          },
+          "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "type": "button",
+                "style": "link",
+                "height": "sm",
+                "action": {
+                  "type": "uri",
+                  "label": "詳細",
+                  "uri": detaillink
+                }
+              },
+              {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [],
+                "margin": "sm"
+              }
+            ],
+            "flex": 0,
+            "action": {
+              "type": "uri",
+              "label": "action",
+              "uri": "http://linecorp.com/"
+            }
+          }
+
+        }
+
+
+
+      }
+    ]
+    postData = {
+      "replyToken": replyToken,
+      "messages": kankochi
+    };
   }
+
+
 
   // リクエストヘッダ
   var headers = {
