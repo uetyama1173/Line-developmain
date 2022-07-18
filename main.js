@@ -1,4 +1,11 @@
+
+// コメント
+
 function reply(data) {
+  let agesnum
+  let numbersnum
+  let colorsnum
+
 
   // POST情報から必要データを抽出;
   let replyToken = data.events[0].replyToken;
@@ -32,7 +39,11 @@ function reply(data) {
     }
   }
 
-
+  let land
+  let detail
+  let imageurl
+  let detaillink
+  let placekanko
 
   let nextMode = "default"
   if (typedata == "message") {
@@ -44,6 +55,21 @@ function reply(data) {
     } else if (numbers.includes(postbackdata)) {
       nextMode = "color"
     } else if (colors.includes(postbackdata)) {
+
+      //最終行を取得
+      lastdata = sheet_data.getLastRow();
+      lastdataUser = sheet_data.getRange(lastdata, 2).getValue();
+
+      agesnum = sheet_data.getRange(lastdata - 2, 4).getValue();
+      numbersnum = sheet_data.getRange(lastdata - 1, 4).getValue();
+      colorsnum = sheet_data.getRange(lastdata, 4).getValue();
+
+      placekanko = myFunction(agesnum, numbersnum, colorsnum) //cos類似度
+      land = placekanko[0]
+      detail = placekanko[1]
+      imageurl = placekanko[2]
+      detaillink = placekanko[3]
+
       nextMode = "ans"
     }
   }
@@ -61,13 +87,16 @@ function reply(data) {
   //   }
   // }
 
-
   // メッセージAPI送信
-  sendMessage(replyToken, nextMode,);
+  sendMessage(replyToken, nextMode, land, detail, imageurl, detaillink);
+  //,land,detail,imageurl,detaillink
+
 }
 
+//let waoo =  [land,detail,imageurl,detaillink]
 // LINE messaging apiにJSON形式でデータをPOST
-function sendMessage(replyToken, nextMode) {
+function sendMessage(replyToken, nextMode, land, detail, imageurl, detaillink) {
+
 
   //function kankochijson()
 
